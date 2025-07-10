@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Админ-панель</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #f5f5f5; }
+    h1, h2 { color: #333; }
+    input, select, button, textarea {
+      margin: 5px 0;
+      padding: 8px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .block {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px #ccc;
+    }
+    img { max-width: 100px; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h1>🛠 Админ-панель</h1>
+
+  <section>
+    <h2>📂 Категории</h2>
+    <input type="text" id="category-name" placeholder="Название категории">
+    <button onclick="addCategory()">➕ Добавить категорию</button>
+    <div id="categories" class="grid"></div>
+  </section>
+
+  <section>
+    <h2>📦 Добавление товара</h2>
+    <select id="category-select"></select>
+    <select id="subcategory-select"><option value="">— Без подкатегории —</option></select>
+    <input type="text" id="product-name" placeholder="Название товара">
+    <input type="number" id="product-price" placeholder="Цена">
+    <select id="price-unit">
+      <option value="perKg">Цена за кг</option>
+      <option value="per100g">Цена за 100 г</option>
+      <option value="perPiece">Цена за шт</option>
+    </select>
+    <input type="file" id="product-image">
+    <button onclick="addProduct()">📥 Добавить товар</button>
+    <div id="products" class="grid"></div>
+  </section>
+
+  <script>
+    const categories = JSON.parse(localStorage.getItem("categories") || "[]");
+    const products = JSON.parse(localStorage.getItem("products") || "[]");
+
+    function saveData() {
+      localStorage.setItem("categories", JSON.stringify(categories));
+      localStorage.setItem("products", JSON.stringify(products));
+    }
+
+    function addCategory() {
+      const name = document.getElementById("category-name").value.trim();
+      if (!name) return;
+      categories.push({ name, subcategories: [] });
+      document.getElementById("category-name").value = "";
+      renderCategories();
+      updateSelects();
+      saveData();
+    }
+
+    function renderCategories() {
+      const container = document.getElementById("categories");
+      container.innerHTML = "";
+      categories.forEach((cat, i) => {
+        const block = document.createElement("div");
+        block.className = "block";
+        block.innerHTML = `
+          <strong>${cat.name}</strong><br/>
+          <button onclick="editCategory(${i})">✏️ Редактировать</button>
+          <button onclick="deleteCategory(${i})">🗑 Удалить</button><br/><br/>
+          <input type="text" id="subcat-${i}" placeholder="Подкатегория">
+          <button onclick="addSubcategory(${i})">➕ Подкатегория</button>
+          <ul>${cat.subcategories.map((s, j) =>
+            `<li>${s} <button onclick="editSubcategory(${i}, ${j})">✏️</button> 
+             <button onclick="deleteSubcategory(${i}, ${j})">🗑</button></li>`
+          ).join("")}</ul>
+        `;
+        container.appendChild(block);
+      });
+    }
+
+    function editCategory(i) {
+      const name = prompt("Новое название категории", categories[i].name);
+      if (name) categories[i].name = name;
+      renderCategories();
+      updateSelects();
+      saveData();
+    }
+
+    function deleteCategory(i) {
+      if (confirm("Удалить категорию?")) {
+        categories.splice(i, 1);
+        renderCategories();
+        updateSelects();
+        saveData();
+      }
+    }
+
+    function addSubcategory(i) {
+      const val = document.getElementById("subcat-" + i).value.trim();
+      if (val) categories[i].subcategories.push(val);
+      renderCategories();
+      updateSelects();
+      saveData();
+    }
+
+    function editSubcategory(i, j) {
+      const val = prompt("Новое название подкатегории", categories[i].subcategories[j]);
+      if (val) categories[i].subcategories[j] = val;
+      renderCategories();
+      updateSelects();
+      saveData();
+    }
+
+    function deleteSubcategory(i, j) {
+      if (confirm("Удалить подкатегорию?")) {
+        categories[i].subcategories.splice(j, 1);
+        renderCategories();
+        updateSelects();
+        saveData();
+      }
+    }
+
+    function updateSelects() {
+      const catSelect = document.getElementById("category-select");
+      const subcatSelect = document.getElementById("subcategory-select");
+      catSelect.innerHTML = "";
+      subcatSelect.innerHTML = "<option value=''>— Без подкатегории —</option>";
+
+      categories.forEach((cat, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = cat.name;
+        catSelect.appendChild(opt);
+      });
+
+      catSelect.onchange = () => {
+        const selected = categories[catSelect.value];
+        subcatSelect.innerHTML = "<option value=''>— Без подкатегории —</option>";
+        selected?.subcategories.forEach(sub => {
+          const opt = document.createElement("option");
+          opt.value = sub;
+          opt.textContent = sub;
+          subcatSelect.appendChild(opt);
+        });
+      };
+
+      catSelect.dispatchEvent(new Event("change"));
+    }
+
+    function addProduct() {
+      const catIndex = +document.getElementById("category-select").value;
+      const sub = document.getElementById("subcategory-select").value;
+      const name = document.getElementById("product-name").value.trim();
+      const price = +document.getElementById("product-price").value;
+      const unit = document.getElementById("price-unit").value;
+      const file = document.getElementById("product-image").files[0];
+
+      if (!name || isNaN(price) || isNaN(catIndex)) return;
+
+      const saveAndClear = (img = "") => {
+        products.push({
+          name,
+          price,
+          unit,
+          category: categories[catIndex].name,
+          subcategory: sub || null,
+          image: img
+        });
+        renderProducts();
+        saveData();
+        document.getElementById("product-name").value = "";
+        document.getElementById("product-price").value = "";
+        document.getElementById("product-image").value = "";
+      };
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => saveAndClear(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        saveAndClear();
+      }
+    }
+
+    function renderProducts() {
+      const container = document.getElementById("products");
+      container.innerHTML = "";
+      products.forEach((p, i) => {
+        let priceLabel = "";
+        if (p.unit === "perKg") priceLabel = `Цена за 1 кг: ${p.price}₽`;
+        else if (p.unit === "per100g") priceLabel = `Цена за 100 г: ${p.price}₽`;
+        else priceLabel = `Цена за шт: ${p.price}₽`;
+
+        const block = document.createElement("div");
+        block.className = "block";
+        block.innerHTML = `
+          <strong>${p.name}</strong><br/>
+          ${priceLabel}<br/>
+          Категория: ${p.category}${p.subcategory ? " / " + p.subcategory : ""}<br/>
+          ${p.image ? `<img src="${p.image}" alt="Фото товара"><br/>` : ""}
+          <button onclick="editProduct(${i})">✏️ Редактировать</button>
+          <button onclick="deleteProduct(${i})">🗑 Удалить</button>
+        `;
+        container.appendChild(block);
+      });
+    }
+
+    function editProduct(i) {
+      const p = products[i];
+      const name = prompt("Новое название товара", p.name);
+      const price = +prompt("Новая цена (за кг / 100г / шт)", p.price);
+      if (name && !isNaN(price)) {
+        p.name = name;
+        p.price = price;
+        renderProducts();
+        saveData();
+      }
+    }
+
+    function deleteProduct(i) {
+      if (confirm("Удалить товар?")) {
+        products.splice(i, 1);
+        renderProducts();
+        saveData();
+      }
+    }
+
+    // Инициализация
+    renderCategories();
+    renderProducts();
+    updateSelects();
+  </script>
+</body>
+</html>

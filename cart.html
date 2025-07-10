@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Корзина</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>🛒 Ваша корзина</h1>
+    <button onclick="location.href='index.html'">← Назад</button>
+  </header>
+
+  <main>
+    <div id="cart-items"></div>
+    <div id="total">Сумма: 0₽</div>
+    <button id="checkout-btn">Оформить заказ</button>
+  </main>
+
+  <script>
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+    function renderCart() {
+      const container = document.getElementById('cart-items');
+      container.innerHTML = '';
+      let total = 0;
+
+      if (cart.length === 0) {
+        container.innerHTML = "<i>Корзина пуста</i>";
+        document.getElementById('total').innerText = 'Сумма: 0₽';
+        return;
+      }
+
+      cart.forEach((item, index) => {
+        let qtyLabel = '';
+        if (item.unit === 'perKg' || item.unit === 'per100g') {
+          qtyLabel = `${item.quantity} г`;
+        } else {
+          qtyLabel = `${item.quantity} шт`;
+        }
+
+        container.innerHTML += `
+          <div style="margin-bottom: 15px; background: #fff; padding:10px; border-radius:8px;">
+            <strong>${item.name}</strong> — ${qtyLabel}<br>
+            <span>Итого: ${item.sum}₽</span><br>
+            ${item.img ? `<img src="${item.img}" style="max-width:70px;max-height:70px;">` : ''}
+            <button onclick="removeItem(${index})">Удалить</button>
+          </div>
+        `;
+        total += item.sum;
+      });
+
+      document.getElementById('total').innerText = 'Сумма: ' + total + '₽';
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    document.getElementById('checkout-btn').onclick = function () {
+      window.location.href = "checkout.html";
+    };
+
+    renderCart();
+  </script>
+</body>
+</html>

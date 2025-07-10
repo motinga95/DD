@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Оформление заказа</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>📦 Оформление заказа</h1>
+    <button onclick="location.href='cart.html'">← Назад в корзину</button>
+  </header>
+
+  <main>
+    <form id="order-form">
+      <label>Имя:</label><br/>
+      <input type="text" name="name" required /><br/><br/>
+
+      <label>Телефон:</label><br/>
+      <input type="tel" name="phone" required /><br/><br/>
+
+      <label>Адрес доставки:</label><br/>
+      <textarea name="address" required></textarea><br/><br/>
+
+      <label>Комментарий:</label><br/>
+      <textarea name="comment"></textarea><br/><br/>
+
+      <button type="submit">📨 Отправить заказ</button>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById('order-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const order = {
+        name: formData.get('name'),
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        comment: formData.get('comment'),
+        items: cart
+      };
+
+      let message = `🛒 Новый заказ\n`;
+      message += `👤 Имя: ${order.name}\n`;
+      message += `📞 Телефон: ${order.phone}\n`;
+      message += `🏠 Адрес: ${order.address}\n`;
+      message += `💬 Комментарий: ${order.comment || '—'}\n\n`;
+      message += `📦 Товары:\n`;
+
+      order.items.forEach(item => {
+        message += `• ${item.name} × ${item.quantity} (${item.price}₽)\n`;
+      });
+
+      const TOKEN = 'ТВОЙ_ТОКЕН_БОТА';       // ← Вставь сюда токен
+      const CHAT_ID = 'ТВОЙ_CHAT_ID';         // ← Вставь сюда Chat ID
+      const telegramURL = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
+
+      fetch(telegramURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: message
+        })
+      })
+      .then(() => {
+        alert("✅ Заказ успешно отправлен в Telegram!");
+        localStorage.removeItem('cart');
+        this.reset();
+      })
+      .catch(() => {
+        alert("⚠️ Ошибка при отправке заказа в Telegram.");
+      });
+    });
+  </script>
+</body>
+</html>
